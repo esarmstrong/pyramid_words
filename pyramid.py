@@ -30,73 +30,8 @@ def pyramidify(word):
     else:
         return "This is NOT a pyramid word!\n"
 
-
-@route('/')
-def server_static(filepath="index.html"):
-    return static_file(filepath, root='./public/')
-
-
-@post('/doform')
-def process():
-    '''Function to retrieve user entry from form and return whether
-    or not the provided word is a pyramid word'''
-    word = request.forms.get('word')
+def scrub_input(word,include_numbers,include_upper,webpage=False):
     global i, n
-    include_upper = True            #allow user to input upper and lower case characters
-    include_numbers = True          #allow user to input numeric characters
-    try:
-        if len(word) in valid_lengths or len(word) > 2048:       #check length of submitted word
-
-            not_alpha = False                                    #make sure user has not provided invalid characters
-            for c in word:
-                if not c.isalpha():
-                    if include_numbers and c.isalnum():
-                        continue
-                    else:                
-                        not_alpha = True
-                        break     
-
-            if not_alpha:
-                response.status = 400
-                return "Please try again with alpha characters only or specify 'num=True' to use numbers\n"
-            if word == "":
-                response.status = 400
-                return "No word\n"
-
-            else:
-                if not include_upper:
-                    result = pyramidify(word.upper())
-                else:
-                    result = pyramidify(word)
-
-                if 'NOT' in result:
-                    response.status = 404
-                    return result
-                else:
-                    valid_lengths.append(len(word))              #format letters in pyramid structure
-                    results = result.split('\n')
-                    return template('pyramid',lines=results)
-        else:
-            response.status = 500
-            return "This is NOT a pyramid word! (invalid length)\n"
-
-    except Exception as e:
-        response.status = 500
-        return e.message
-
-
-@route('/isPyramid')
-def index():
-    word = request.query.word
-    caps = request.query.caps
-    numbers = request.query.num
-    include_upper = False
-    include_numbers = False
-    global i, n
-    if caps and caps.upper() == 'TRUE':
-        include_upper = True
-    if numbers and numbers.upper() == 'TRUE':
-        include_numbers = True
     try:
         if len(word) in valid_lengths or len(word) > 2048:
             not_alpha = False
@@ -123,6 +58,9 @@ def index():
                     return result
                 else:
                     valid_lengths.append(len(word))
+                    if webpage:
+                        results = result.split('\n')
+                        return template('pyramid',lines=results)
                     return result
         else:
             response.status = 500
@@ -130,6 +68,35 @@ def index():
     except Exception as e:
         response.status = 500
         return e.message
+
+@route('/')
+def server_static(filepath="index.html"):
+    return static_file(filepath, root='./public/')
+
+
+@post('/doform')
+def process():
+    '''Function to retrieve user entry from form and return whether
+    or not the provided word is a pyramid word'''
+    word = request.forms.get('word')
+    include_upper = True            #allow user to input upper and lower case characters
+    include_numbers = True          #allow user to input numeric characters
+    return scrub_input(word,include_numbers,include_upper,webpage=True)
+
+
+@route('/isPyramid')
+def index():
+    word = request.query.word
+    caps = request.query.caps
+    numbers = request.query.num
+    include_upper = False
+    include_numbers = False
+    if caps and caps.upper() == 'TRUE':
+        include_upper = True
+    if numbers and numbers.upper() == 'TRUE':
+        include_numbers = True
+    return scrub_input(word,include_numbers,include_upper)
+    
 
 if  __name__ == '__main__':
     run(port=8081)
